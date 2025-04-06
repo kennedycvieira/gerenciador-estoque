@@ -4,34 +4,121 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ProdutoManager {
+
+    // Method to update product quantity
+public static boolean atualizarQuantidadeProduto(String usuario,String Nome, Integer identificador, double novaQuantidade) {
+    Connection conn = null;
+    try {
+        conn = DatabaseManager.connect();
+        conn.setAutoCommit(false);
+
+        // First, check if product exists and get current quantity
+        PreparedStatement pstmtVerificar = conn.prepareStatement(
+                "SELECT quantidade FROM produtos WHERE id = ?");
+        pstmtVerificar.setInt(1, identificador);
+        ResultSet rs = pstmtVerificar.executeQuery();
+
+        if (!rs.next()) {
+            return false; // Product not found
+        }
+
+        int produtoId = identificador;
+        double quantidadeAtual = rs.getDouble("quantidade");
+        double quantidadeAlterada = novaQuantidade - quantidadeAtual;
+
+        // Update product quantity
+        PreparedStatement pstmtUpdate = conn.prepareStatement(
+                "UPDATE produtos SET quantidade = ?,nome = ? WHERE id = ?");
+        pstmtUpdate.setDouble(1, novaQuantidade);
+        pstmtUpdate.setString(2, Nome);
+        pstmtUpdate.setInt(3, produtoId);
+        pstmtUpdate.executeUpdate();
+
+        // Insert log entry
+        PreparedStatement pstmtLog = conn.prepareStatement(
+                "INSERT INTO log_alteracoes (tipo_operacao, produto_id, quantidade, usuario) VALUES (?, ?, ?, ?)");
+        
+        pstmtLog.setString(1, "ATUALIZAÇÃO");
+        pstmtLog.setInt(2, produtoId);
+        pstmtLog.setDouble(3, quantidadeAlterada);
+        pstmtLog.setString(4, usuario);
+        
+        pstmtLog.executeUpdate();
+
+        conn.commit();
+        return true;
+    } catch (SQLException e) {
+        if (conn != null) {
+            try {
+                conn.rollback();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+        e.printStackTrace();
+        return false;
+    } finally {
+        if (conn != null) {
+            try {
+                conn.setAutoCommit(true);
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+// Method to get product by identifier
+public static Produto buscarProdutoPorId(int id) {
+    try (Connection conn = DatabaseManager.connect();
+         PreparedStatement pstmt = conn.prepareStatement(
+                 "SELECT * FROM produtos WHERE id = ?")) {
+        
+        pstmt.setInt(1, id);
+        
+        try (ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return new Produto(
+                    rs.getInt("id"),
+                    rs.getString("nome"),
+                    rs.getDouble("quantidade"),
+                    rs.getString("unidade")
+                );
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    
+    return null;
+}
     // Método para adicionar produto
-    public static boolean adicionarProduto(String usuario, String identificador, String nome, 
-                                           double quantidade, String unidade) {
+    public static boolean adicionarProduto(String usuario, String nome, double quantidade, String unidade) {
         Connection conn = null;
         try {
             conn = DatabaseManager.connect();
             conn.setAutoCommit(false);
-
-            // Inserir produto
+    
+            // Insert product
             PreparedStatement pstmtProduto = conn.prepareStatement(
-                    "INSERT INTO produtos (identificador, nome, quantidade, unidade) VALUES (?, ?, ?, ?)", 
+                    "INSERT INTO produtos (nome, quantidade, unidade) VALUES (?, ?, ?)", 
                     Statement.RETURN_GENERATED_KEYS);
             
-            pstmtProduto.setString(1, identificador);
-            pstmtProduto.setString(2, nome);
-            pstmtProduto.setDouble(3, quantidade);
-            pstmtProduto.setString(4, unidade);
+            pstmtProduto.setString(1, nome);
+            pstmtProduto.setDouble(2, quantidade);
+            pstmtProduto.setString(3, unidade);
             
             pstmtProduto.executeUpdate();
-
-            // Recuperar o ID do produto inserido
+    
+            // Retrieve the generated product ID
             ResultSet rs = pstmtProduto.getGeneratedKeys();
             int produtoId = -1;
             if (rs.next()) {
                 produtoId = rs.getInt(1);
             }
-
-            // Inserir log de alteração
+    
+            // Insert log entry
             PreparedStatement pstmtLog = conn.prepareStatement(
                     "INSERT INTO log_alteracoes (tipo_operacao, produto_id, quantidade, usuario) VALUES (?, ?, ?, ?)");
             
@@ -41,7 +128,7 @@ public class ProdutoManager {
             pstmtLog.setString(4, usuario);
             
             pstmtLog.executeUpdate();
-
+    
             conn.commit();
             return true;
         } catch (SQLException e) {
@@ -67,7 +154,7 @@ public class ProdutoManager {
     }
 
     // Método para remover produto
-    public static boolean removerProduto(String usuario, String identificador, double quantidadeRemover) {
+    public static boolean removerProduto(String usuario, String id, double quantidadeRemover) {
         Connection conn = null;
         try {
             conn = DatabaseManager.connect();
@@ -75,8 +162,8 @@ public class ProdutoManager {
 
             // Primeiro, verificar a quantidade atual do produto
             PreparedStatement pstmtVerificar = conn.prepareStatement(
-                    "SELECT id, quantidade FROM produtos WHERE identificador = ?");
-            pstmtVerificar.setString(1, identificador);
+                    "SELECT id, quantidade FROM produtos WHERE id = ?");
+            pstmtVerificar.setString(1, id);
             ResultSet rs = pstmtVerificar.executeQuery();
 
             if (!rs.next()) {
@@ -140,7 +227,7 @@ public class ProdutoManager {
         
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement pstmt = conn.prepareStatement(
-                     "SELECT * FROM produtos WHERE nome LIKE ? OR identificador LIKE ?")) {
+                     "SELECT * FROM produtos WHERE nome LIKE ? OR id LIKE ?")) {
             
             String searchTerm = "%" + termo + "%";
             pstmt.setString(1, searchTerm);
@@ -149,7 +236,7 @@ public class ProdutoManager {
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Produto produto = new Produto(
-                        rs.getString("identificador"),
+                        rs.getInt("id"),
                         rs.getString("nome"),
                         rs.getDouble("quantidade"),
                         rs.getString("unidade")

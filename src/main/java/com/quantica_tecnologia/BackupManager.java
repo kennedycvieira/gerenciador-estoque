@@ -52,9 +52,6 @@ public class BackupManager {
     // Restaurar backup
     public static boolean restaurarBackup(String caminhoBackup) {
         try {
-            // Fechar todas as conexões ativas com o banco de dados
-            // Em um cenário real, você precisaria implementar um método para 
-            // fechar todas as conexões ativas antes de restaurar
 
             Path source = Path.of(caminhoBackup);
             Path destination = Path.of(DB_PATH);
