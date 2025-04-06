@@ -109,23 +109,23 @@ public class App extends Application {
         Button imprimirListaButton = new Button("Imprimir Lista");
         imprimirListaButton.setOnAction(e -> {
             //if (!PrintManager.printProdutos(tabelaEstoque.getItems(), pesquisaField.getText())) {
-                if (!PrintManager.printProdutos(new ArrayList<Produto>(),"")) {
+                if (!PrintManager.printSaidas(tabelaSaida.getItems(),"")) {
                 mostrarAlerta("Impressão cancelada ou erro ao imprimir");
             }
         });
 
-        /*Button imprimirDetalhadoButton = new Button("Imprimir Produto Selecionado");
+        Button imprimirDetalhadoButton = new Button("Imprimir Produto Selecionado");
         imprimirDetalhadoButton.setOnAction(e -> {
-            Produto produtoSelecionado = tabelaEstoque.getSelectionModel().getSelectedItem();
+            SaidaProduto produtoSelecionado = tabelaSaida.getSelectionModel().getSelectedItem();
             if (produtoSelecionado != null) {
-                if (!PrintManager.printProdutoDetalhado(produtoSelecionado)) {
+                if (!PrintManager.printSaidaDetalhada(produtoSelecionado)) {
                     mostrarAlerta("Impressão cancelada ou erro ao imprimir");
                 }
             } else {
                 mostrarAlerta("Selecione um produto para imprimir");
             }
         });
-        */
+        
         // Create a more organized layout with HBox for buttons
         HBox searchButtonsBox = new HBox(10);
     //        searchButtonsBox.getChildren().addAll(pesquisarButton, atualizarButton);
